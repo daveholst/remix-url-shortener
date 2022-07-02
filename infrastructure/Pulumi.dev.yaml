@@ -1,0 +1,4 @@
+config:
+  # replace with different aws profile name from ~/.aws/credentials if required
+  aws:profile: pulumi-admin
+  aws:region: ap-southeast-2

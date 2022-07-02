@@ -1,31 +1,40 @@
 {
-  "name": "ts-pulumi-template",
-  "version": "1.0.0",
-  "description": "A Typescript & Pulumi Repo Template",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "npx tsc",
-    "start": "node dist/index.js",
-    "dev": "concurrently -p \"[{name}]\" -n \"TSC,NODEMON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npx tsc --watch\" \"nodemon -q dist/index.js\""
-  },
-  "keywords": [],
-  "author": "daveholst",
-  "license": "ISC",
-  "dependencies": {
-    "@pulumi/pulumi": "^3.0.0",
-    "@pulumi/aws": "^5.0.0",
-    "@pulumi/awsx": "^0.40.0"
-  },
-  "devDependencies": {
-    "@tsconfig/node16": "^1.0.3",
-    "@types/node": "^18.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.30.3",
-    "@typescript-eslint/parser": "^5.30.3",
-    "concurrently": "^7.2.2",
-    "eslint": "^8.19.0",
-    "eslint-config-prettier": "^8.5.0",
-    "nodemon": "^2.0.18",
-    "prettier": "^2.7.1",
-    "typescript": "^4.7.4"
-  }
+    "name": "ts-pulumi-template",
+    "version": "1.0.0",
+    "description": "A Typescript & Pulumi Repo Template",
+    "sideEffects": false,
+    "scripts": {
+        "build": "remix build",
+        "dev": "remix dev",
+        "start": "remix-serve build"
+    },
+    "keywords": [],
+    "author": "daveholst",
+    "license": "ISC",
+    "dependencies": {
+        "@pulumi/aws": "^5.0.0",
+        "@pulumi/awsx": "^0.40.0",
+        "@pulumi/pulumi": "^3.0.0",
+        "@remix-run/node": "^1.6.3",
+        "@remix-run/react": "^1.6.3",
+        "@remix-run/serve": "^1.6.3",
+        "@stitches/react": "^1.2.7",
+        "react": "^17.0.2",
+        "react-dom": "^17.0.2"
+    },
+    "devDependencies": {
+        "@remix-run/dev": "^1.6.3",
+        "@tsconfig/node16": "^1.0.3",
+        "@types/node": "^18.0.0",
+        "@typescript-eslint/eslint-plugin": "^5.30.3",
+        "@typescript-eslint/parser": "^5.30.3",
+        "concurrently": "^7.2.2",
+        "eslint": "^8.19.0",
+        "eslint-config-prettier": "^8.5.0",
+        "nodemon": "^2.0.18",
+        "prettier": "^2.7.1",
+        "typescript": "^4.7.4",
+        "@types/react": "^17.0.39",
+        "@types/react-dom": "^17.0.13"
+    }
 }

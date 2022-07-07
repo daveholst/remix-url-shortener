@@ -25,7 +25,7 @@ export async function bundleAndZip() {
         external: ['aws-sdk'],
         sourcesContent: false,
         sourcemap: true,
-        logLevel: 'debug',
+        logLevel: 'info',
         define: {
             'require.resolve': null,
         },

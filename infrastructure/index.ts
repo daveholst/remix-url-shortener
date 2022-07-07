@@ -10,9 +10,9 @@ import * as mime from 'mime'
 // Bundle Remix build files pragmatically
 
 // build script
-;(async () => {
-    const bundleResult = await bundleAndZip()
-})()
+// ;(async () => {
+//     const bundleResult = await bundleAndZip()
+// })()
 
 // // Create an AWS resource (S3 Bucket)
 // const bucket = new aws.s3.Bucket('template-test-bucket')
@@ -24,12 +24,15 @@ import * as mime from 'mime'
 const projectRoot = './'
 const staticFiles = '../public'
 
-const stackName = pulumi.getStack()
+// const stackName = pulumi.getStack()
 const name = 'link-shortener'
 const domain = 'link.dh.wtf'
 const dbName = 'link-shortener-table'
 const domainParts = getDomainAndSubdomain(domain)
 const tenMinutes = 60 * 10
+
+const existingCertArn =
+    'arn:aws:acm:us-east-1:739766728346:certificate/fb2c29a3-f51f-4ac8-9813-89c5ecd7a13b'
 
 // TODO see what is up here
 function getTags(name: string) {
@@ -52,32 +55,43 @@ const selectedZone = pulumi.output(
     aws.route53.getZone({ name: domainParts.parentDomain }, { async: true })
 )
 
+// Per AWS, ACM certificate must be in the us-east-1 region.
+// const eastRegion = new aws.Provider(`${name}-east-1-provider`, {
+//     profile: 'pulumi-admin',
+//     region: 'us-east-1',
+// })
+
 //  Create the SSL Certificate
-const certificate = new aws.acm.Certificate(`${name}-certificate`, {
-    domainName: domain,
-    validationMethod: 'DNS',
-})
+// const certificate = new aws.acm.Certificate(
+//     `${name}-certificate`,
+//     {
+//         domainName: domain,
+//         validationMethod: 'DNS',
+//     },
+//     { provider: eastRegion }
+// )
 
 // Create the Certificate Validation Records in the DNS
-const certificateValidationDomain = new aws.route53.Record(
-    `${name}-validation`,
-    {
-        name: certificate.domainValidationOptions[0].resourceRecordName,
-        zoneId: selectedZone.zoneId,
-        type: certificate.domainValidationOptions[0].resourceRecordType,
-        records: [certificate.domainValidationOptions[0].resourceRecordValue],
-        ttl: tenMinutes,
-    }
-)
+// const certificateValidationDomain = new aws.route53.Record(
+//     `${name}-validation`,
+//     {
+//         name: certificate.domainValidationOptions[0].resourceRecordName,
+//         zoneId: selectedZone.zoneId,
+//         type: certificate.domainValidationOptions[0].resourceRecordType,
+//         records: [certificate.domainValidationOptions[0].resourceRecordValue],
+//         ttl: tenMinutes,
+//     },
+//     { provider: eastRegion }
+// )
 
 // Wait for Certificate to be validated
-const certificateValidation = new aws.acm.CertificateValidation(
-    `${name}-certificate-validation`,
-    {
-        certificateArn: certificate.arn,
-        validationRecordFqdns: [certificateValidationDomain.fqdn],
-    }
-)
+// const certificateValidation = new aws.acm.CertificateValidation(
+//     `${name}-certificate-validation`,
+//     {
+//         certificateArn: certificate.arn,
+//         validationRecordFqdns: [certificateValidationDomain.fqdn],
+//     }
+// )
 
 /**
  * Database
@@ -209,18 +223,18 @@ const route = new aws.apigatewayv2.Route(`${name}-gateway-route`, {
 })
 
 // api gateway domain
-const gatewayDomainName = new aws.apigatewayv2.DomainName(
-    `${name}-gateway-domain`,
-    {
-        domainName: domain,
-        domainNameConfiguration: {
-            certificateArn: certificate.arn,
-            endpointType: 'REGIONAL',
-            securityPolicy: 'TLS_1_2',
-        },
-    },
-    { dependsOn: [certificate, certificateValidation] }
-)
+// const gatewayDomainName = new aws.apigatewayv2.DomainName(
+//     `${name}-gateway-domain`,
+//     {
+//         domainName: domain,
+//         domainNameConfiguration: {
+//             certificateArn: certificate.arn,
+//             endpointType: 'REGIONAL',
+//             securityPolicy: 'TLS_1_2',
+//         },
+//     },
+//     { dependsOn: [certificate, certificateValidation] }
+// )
 
 // api gateway stage //TODO wtf is this?
 const stage = new aws.apigatewayv2.Stage(
@@ -241,11 +255,11 @@ const stage = new aws.apigatewayv2.Stage(
 )
 
 // api gateway mapping
-const mapping = new aws.apigatewayv2.ApiMapping(`${name}-api-mapping`, {
-    apiId: apiGateway.id,
-    domainName: gatewayDomainName.id,
-    stage: stage.name,
-})
+// const mapping = new aws.apigatewayv2.ApiMapping(`${name}-api-mapping`, {
+//     apiId: apiGateway.id,
+//     domainName: gatewayDomainName.id,
+//     stage: stage.name,
+// })
 
 /**
  * Static Assets Bucket
@@ -296,12 +310,11 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     // Required if you want to access the distribution via config.targetDomain as well.
     aliases: [domain],
 
-    // We only specify one origin for this distribution, the S3 content bucket.
     origins: [
         {
-            originPath: '/static/*',
-            originId: staticFilesBucket.arn,
-            domainName: staticFilesBucket.websiteEndpoint,
+            // originPath: '/static',
+            originId: 'static-bucket',
+            domainName: staticFilesBucket.bucketDomainName,
             customOriginConfig: {
                 // Amazon S3 doesn't support HTTPS connections when using an S3 bucket configured as a website endpoint.
                 // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesOriginProtocolPolicy
@@ -312,13 +325,15 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
             },
         },
         {
-            originPath: '/',
-            originId: staticFilesBucket.arn,
-            domainName: staticFilesBucket.websiteEndpoint,
+            // originPath: '/',
+            originId: 'ssr-lambda',
+            domainName: apiGateway.apiEndpoint.apply(url =>
+                url.replace(/^https?:\/\//, '')
+            ),
             customOriginConfig: {
                 // Amazon S3 doesn't support HTTPS connections when using an S3 bucket configured as a website endpoint.
                 // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesOriginProtocolPolicy
-                originProtocolPolicy: 'http-only',
+                originProtocolPolicy: 'https-only',
                 httpPort: 80,
                 httpsPort: 443,
                 originSslProtocols: ['TLSv1.2'],
@@ -331,7 +346,7 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     // A CloudFront distribution can configure different cache behaviors based on the request path.
     // Here we just specify a single, default cache behavior which is just read-only requests to S3.
     defaultCacheBehavior: {
-        targetOriginId: siteBucket.arn,
+        targetOriginId: 'ssr-lambda',
         viewerProtocolPolicy: 'redirect-to-https',
         allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
         cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
@@ -342,9 +357,31 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
         },
 
         minTtl: 0,
-        defaultTtl: tenMinutes,
-        maxTtl: tenMinutes,
+        // defaultTtl: tenMinutes,
+        defaultTtl: 15,
+        // maxTtl: tenMinutes,
+        maxTtl: 15,
     },
+    orderedCacheBehaviors: [
+        {
+            pathPattern: '/static/*',
+            allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+            cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
+            targetOriginId: 'static-bucket',
+            forwardedValues: {
+                queryString: false,
+                headers: ['Origin'],
+                cookies: {
+                    forward: 'none',
+                },
+            },
+            minTtl: 0,
+            defaultTtl: 86400,
+            maxTtl: 31536000,
+            compress: true,
+            viewerProtocolPolicy: 'redirect-to-https',
+        },
+    ],
 
     // "All" is the most broad distribution, and also the most expensive.
     // "100" is the least broad, and also the least expensive.
@@ -363,13 +400,13 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     },
 
     viewerCertificate: {
-        acmCertificateArn: certificateValidation.certificateArn, // Per AWS, ACM certificate must be in the us-east-1 region.
+        acmCertificateArn: existingCertArn, // Per AWS, ACM certificate must be in the us-east-1 region.
         sslSupportMethod: 'sni-only',
     },
 }
 
 // Create CloudFront Distribution
-
+const cdn = new aws.cloudfront.Distribution(`${name}-cdn`, distributionArgs)
 /**
  * DNS
  */
@@ -385,20 +422,23 @@ const apiDnsRecord = new aws.route53.Record(
         aliases: [
             {
                 evaluateTargetHealth: false,
-                name: gatewayDomainName.domainNameConfiguration.apply(
-                    domainNameConfiguration =>
-                        domainNameConfiguration.targetDomainName
-                ),
-                zoneId: gatewayDomainName.domainNameConfiguration.apply(
-                    domainNameConfiguration =>
-                        domainNameConfiguration.hostedZoneId
-                ),
+                name: cdn.domainName,
+                zoneId: cdn.hostedZoneId,
+                // name: gatewayDomainName.domainNameConfiguration.apply(
+                //     domainNameConfiguration =>
+                //         domainNameConfiguration.targetDomainName
+                // ),
+                // zoneId: gatewayDomainName.domainNameConfiguration.apply(
+                //     domainNameConfiguration =>
+                //         domainNameConfiguration.hostedZoneId
+                // ),
             },
         ],
     },
-    { dependsOn: [certificateValidation, apiGateway] }
+    { dependsOn: [apiGateway] }
 )
 // }
 
 // exports.url = apiProxy.invokeUrl
 exports.dbArn = linksTable.arn
+// exports.certUrn = certificate.urn

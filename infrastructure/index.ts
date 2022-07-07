@@ -183,6 +183,7 @@ const lambda = new aws.lambda.Function(`${name}-lambda-fucntion`, {
     runtime: 'nodejs14.x',
     role: lambdaRole.arn,
     handler: 'index.handler',
+    memorySize: 2048,
 })
 
 // api gateway
@@ -365,6 +366,24 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     orderedCacheBehaviors: [
         {
             pathPattern: '/static/*',
+            allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+            cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
+            targetOriginId: 'static-bucket',
+            forwardedValues: {
+                queryString: false,
+                headers: ['Origin'],
+                cookies: {
+                    forward: 'none',
+                },
+            },
+            minTtl: 0,
+            defaultTtl: 86400,
+            maxTtl: 31536000,
+            compress: true,
+            viewerProtocolPolicy: 'redirect-to-https',
+        },
+        {
+            pathPattern: '/favicon.ico',
             allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
             cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
             targetOriginId: 'static-bucket',

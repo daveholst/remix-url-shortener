@@ -1,8 +1,8 @@
 /** @type {import('@remix-run/dev').AppConfig} */
+// eslint-disable-next-line no-undef
 module.exports = {
-    ignoredRouteFiles: ['**/.*'],
-    // appDirectory: "app",
-    // assetsBuildDirectory: "public/build",
-    // serverBuildPath: "build/index.js",
-    // publicPath: "/build/",
+    appDirectory: "app",
+    assetsBuildDirectory: "public/static",
+    publicPath: "/static/",
+    serverBuildDirectory: "server/build",
 }

@@ -5,3 +5,6 @@ public
 dist
 *.log
 .cache
+server/build
+infrastructure/bundled
+lambda-bundle.zip

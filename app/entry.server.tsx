@@ -1,7 +1,6 @@
 import type { EntryContext } from '@remix-run/node'
 import { RemixServer } from '@remix-run/react'
-import { renderToString } from 'react-dom/server'
-
+import ReactDOMServer from 'react-dom/server'
 import { getCssText } from './styles/stitches.config'
 
 export default function handleRequest(
@@ -10,12 +9,14 @@ export default function handleRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
-    let markup = renderToString(<RemixServer context={remixContext} url={request.url} />)
-
-    markup = markup.replace(
-        /<style id="stitches">.*<\/style>/g,
-        `<style id="stitches">${getCssText()}</style>`
-    )
+    // let markup = renderToString(
+    //     <RemixServer context={remixContext} url={request.url} />
+    // )
+    console.log('REQUEST REC :: ', request)
+    /* Getting stitches working in remix as per https://rossmoody.com/writing/remix-stitches */
+    const markup = ReactDOMServer.renderToString(
+        <RemixServer context={remixContext} url={request.url} />
+    ).replace(/<\/head>/, `<style id="stitches">${getCssText()}</style></head>`)
 
     responseHeaders.set('Content-Type', 'text/html')
 

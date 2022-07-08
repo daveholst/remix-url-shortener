@@ -1,24 +1,12 @@
 import * as pulumi from '@pulumi/pulumi'
 import * as aws from '@pulumi/aws'
-import * as awsx from '@pulumi/awsx'
-import { bundleAndZip } from './utils/bundleLambda'
-import { crawlDirectory } from './utils/crawlDirectory'
-import { getDomainAndSubdomain } from './utils/getDomain'
-import { ApiGatewayLambdaProxy } from '@wanews/pulumi-apigateway-lambda-proxy'
+import {
+    crawlDirectory,
+    getDomainAndSubdomain,
+    BundleLambdaFiles,
+} from './utils'
 import path from 'path'
 import * as mime from 'mime'
-// Bundle Remix build files pragmatically
-
-// build script
-// ;(async () => {
-//     const bundleResult = await bundleAndZip()
-// })()
-
-// // Create an AWS resource (S3 Bucket)
-// const bucket = new aws.s3.Bucket('template-test-bucket')
-
-// // Export the name of the bucket
-// export const bucketName = bucket.id
 
 // This is the path to the other project relative to the CWD
 const projectRoot = './'
@@ -31,17 +19,9 @@ const dbName = 'link-shortener-table'
 const domainParts = getDomainAndSubdomain(domain)
 const tenMinutes = 60 * 10
 
+// TODO move this out to config
 const existingCertArn =
     'arn:aws:acm:us-east-1:739766728346:certificate/fb2c29a3-f51f-4ac8-9813-89c5ecd7a13b'
-
-// TODO see what is up here
-function getTags(name: string) {
-    // Use whatever logic you like to construct your tags
-    return {
-        Name: name,
-        Product: 'link-shortener-service',
-    }
-}
 
 /**
  * Domain & Certs
@@ -54,6 +34,8 @@ function getTags(name: string) {
 const selectedZone = pulumi.output(
     aws.route53.getZone({ name: domainParts.parentDomain }, { async: true })
 )
+
+// TODO keeping these incase they have to be mocked in localstack env
 
 // Per AWS, ACM certificate must be in the us-east-1 region.
 // const eastRegion = new aws.Provider(`${name}-east-1-provider`, {
@@ -134,6 +116,11 @@ const linksTable = new aws.dynamodb.Table(dbName, {
 /**
  * Lambda and API Gateway
  */
+// bundle and zip files for lambda
+const lambdaBundle = new BundleLambdaFiles(`${name}-bundle-files`, {
+    buildDir: '../server',
+    entryFile: 'index.ts',
+})
 
 // lambda role
 const lambdaRole = new aws.iam.Role(`${name}-lambda-role`, {
@@ -176,15 +163,24 @@ const policy = new aws.iam.RolePolicy(`${name}-lambda-policy`, {
 // attach lambda role and policy - not sure if required
 
 // lambda
-const lambda = new aws.lambda.Function(`${name}-lambda-fucntion`, {
-    code: new pulumi.asset.FileArchive(
-        path.resolve(projectRoot, 'lambda-bundle.zip')
-    ),
-    runtime: 'nodejs14.x',
-    role: lambdaRole.arn,
-    handler: 'index.handler',
-    memorySize: 2048,
-})
+const lambda = new aws.lambda.Function(
+    `${name}-lambda-fucntion`,
+    {
+        code: new pulumi.asset.FileArchive(
+            path.resolve(projectRoot, 'lambda-bundle.zip')
+        ),
+        runtime: 'nodejs14.x',
+        role: lambdaRole.arn,
+        handler: 'index.handler',
+        memorySize: 2048,
+        environment: {
+            variables: {
+                DYNAMODB_ARN: linksTable.arn,
+            },
+        },
+    },
+    { dependsOn: lambdaBundle }
+)
 
 // api gateway
 const apiGateway = new aws.apigatewayv2.Api(`${name}-gateway`, {
@@ -208,9 +204,9 @@ const integration = new aws.apigatewayv2.Integration(
     `${name}-lambda-integration`,
     {
         apiId: apiGateway.id,
-        integrationType: 'AWS_PROXY', //TODO should this be HTTP proxy??
+        integrationType: 'AWS_PROXY',
         integrationUri: lambda.arn,
-        integrationMethod: 'POST', //TODO this should prob also be all?
+        integrationMethod: 'POST',
         payloadFormatVersion: '2.0',
         passthroughBehavior: 'WHEN_NO_MATCH',
     }
@@ -223,21 +219,7 @@ const route = new aws.apigatewayv2.Route(`${name}-gateway-route`, {
     target: pulumi.interpolate`integrations/${integration.id}`,
 })
 
-// api gateway domain
-// const gatewayDomainName = new aws.apigatewayv2.DomainName(
-//     `${name}-gateway-domain`,
-//     {
-//         domainName: domain,
-//         domainNameConfiguration: {
-//             certificateArn: certificate.arn,
-//             endpointType: 'REGIONAL',
-//             securityPolicy: 'TLS_1_2',
-//         },
-//     },
-//     { dependsOn: [certificate, certificateValidation] }
-// )
-
-// api gateway stage //TODO wtf is this?
+// api gateway stage
 const stage = new aws.apigatewayv2.Stage(
     `${name}-gateway-stage`,
     {
@@ -255,13 +237,6 @@ const stage = new aws.apigatewayv2.Stage(
     { dependsOn: [route] }
 )
 
-// api gateway mapping
-// const mapping = new aws.apigatewayv2.ApiMapping(`${name}-api-mapping`, {
-//     apiId: apiGateway.id,
-//     domainName: gatewayDomainName.id,
-//     stage: stage.name,
-// })
-
 /**
  * Static Assets Bucket
  */
@@ -270,9 +245,6 @@ const stage = new aws.apigatewayv2.Stage(
 const staticFilesBucket = new aws.s3.Bucket(`${name}-static-files-bucket`, {
     bucket: domain,
     acl: 'public-read',
-    // website: {
-    //     indexDocument: 'index.html',
-    // },
 })
 
 // Place files from public into bucket
@@ -307,18 +279,14 @@ crawlDirectory(webContentsRootPath, (filePath: string) => {
 // https://www.terraform.io/docs/providers/aws/r/cloudfront_distribution.html
 const distributionArgs: aws.cloudfront.DistributionArgs = {
     enabled: true,
-    // Alternate aliases the CloudFront distribution can be reached at, in addition to https://xxxx.cloudfront.net.
-    // Required if you want to access the distribution via config.targetDomain as well.
     aliases: [domain],
 
     origins: [
         {
-            // originPath: '/static',
             originId: 'static-bucket',
             domainName: staticFilesBucket.bucketDomainName,
             customOriginConfig: {
-                // Amazon S3 doesn't support HTTPS connections when using an S3 bucket configured as a website endpoint.
-                // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesOriginProtocolPolicy
+                // Amazon S3 doesn't support HTTPS connections when using an S3 bucket
                 originProtocolPolicy: 'http-only',
                 httpPort: 80,
                 httpsPort: 443,
@@ -326,14 +294,12 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
             },
         },
         {
-            // originPath: '/',
             originId: 'ssr-lambda',
+            // CF required the domain name to not be prefixed with http/https
             domainName: apiGateway.apiEndpoint.apply(url =>
                 url.replace(/^https?:\/\//, '')
             ),
             customOriginConfig: {
-                // Amazon S3 doesn't support HTTPS connections when using an S3 bucket configured as a website endpoint.
-                // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html#DownloadDistValuesOriginProtocolPolicy
                 originProtocolPolicy: 'https-only',
                 httpPort: 80,
                 httpsPort: 443,
@@ -341,11 +307,6 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
             },
         },
     ],
-
-    // defaultRootObject: 'index.html',
-
-    // A CloudFront distribution can configure different cache behaviors based on the request path.
-    // Here we just specify a single, default cache behavior which is just read-only requests to S3.
     defaultCacheBehavior: {
         targetOriginId: 'ssr-lambda',
         viewerProtocolPolicy: 'redirect-to-https',
@@ -403,14 +364,7 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     ],
 
     // "All" is the most broad distribution, and also the most expensive.
-    // "100" is the least broad, and also the least expensive.
-    priceClass: 'PriceClass_100',
-
-    // You can customize error responses. When CloudFront receives an error from the origin (e.g. S3 or some other
-    // web service) it can return a different error code, and return the response for a different resource.
-    // customErrorResponses: [
-    //     { errorCode: 404, responseCode: 404, responsePagePath: '/404.html' },
-    // ],
+    priceClass: 'PriceClass_All',
 
     restrictions: {
         geoRestriction: {
@@ -424,8 +378,9 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     },
 }
 
-// Create CloudFront Distribution
+// Create CloudFront Distribution from config
 const cdn = new aws.cloudfront.Distribution(`${name}-cdn`, distributionArgs)
+
 /**
  * DNS
  */
@@ -443,14 +398,6 @@ const apiDnsRecord = new aws.route53.Record(
                 evaluateTargetHealth: false,
                 name: cdn.domainName,
                 zoneId: cdn.hostedZoneId,
-                // name: gatewayDomainName.domainNameConfiguration.apply(
-                //     domainNameConfiguration =>
-                //         domainNameConfiguration.targetDomainName
-                // ),
-                // zoneId: gatewayDomainName.domainNameConfiguration.apply(
-                //     domainNameConfiguration =>
-                //         domainNameConfiguration.hostedZoneId
-                // ),
             },
         ],
     },
@@ -458,6 +405,4 @@ const apiDnsRecord = new aws.route53.Record(
 )
 // }
 
-// exports.url = apiProxy.invokeUrl
 exports.dbArn = linksTable.arn
-// exports.certUrn = certificate.urn

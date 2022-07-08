@@ -1,38 +1,52 @@
-import { build } from 'esbuild'
-import { zip } from 'zip-a-folder'
-import path from 'path'
+import * as pulumi from '@pulumi/pulumi'
+import { BuildResult } from 'esbuild'
+import { bundleAndZip } from './bundleAndZip'
+// import { runCommandThatMustSucceed } from './run-command'
 
-async function zipper(bundle: string) {
-    // const zip = new JSZip()
-    // zip.file('index.js', bundle)
-    // const buf = await zip.generateAsync()
-    // return buf
+export interface BundleLambdaArgs {
+    /**
+     * Relative Build files directory location
+     */
+    buildDir: pulumi.Input<string>
+    /**
+     * Entry File
+     */
+    entryFile: pulumi.Input<string>
 }
 
-// TODO come back to writing this. just going to use a package for now.
+export interface Result {
+    buildRes: BuildResult
+    zipRes: boolean
+}
 
-const projectRoot = '../server'
-const entryPoint = path.resolve(projectRoot, 'index.ts')
+export class BundleLambdaFiles extends pulumi.ComponentResource {
+    public bundleResult: pulumi.Output<boolean>
+    public done: pulumi.Output<boolean>
 
-// bundle the files from remix
-export async function bundleAndZip() {
-    const buildRes = await build({
-        bundle: true,
-        entryPoints: [entryPoint],
-        outdir: './bundled',
-        platform: 'node',
-        target: 'node14',
-        external: ['aws-sdk'],
-        sourcesContent: false,
-        sourcemap: true,
-        logLevel: 'info',
-        define: {
-            'require.resolve': null,
-        },
-    }).catch(() => process.exit(1))
-    console.log('Build Result :: ', buildRes)
-    // const zipRes = await zipper('./bundled')
-    const zipRes = await zip('./bundled', './lambda-bundle.zip')
-    console.log('Zip Result :: ', zipRes)
-    return { buildRes, zipSuccess: !zipRes && true }
+    constructor(
+        name: string,
+        args: BundleLambdaArgs,
+        opts?: pulumi.ComponentResourceOptions
+    ) {
+        super('bundle-lambda', name, {}, opts)
+
+        const bundleResult = pulumi.output(args).apply(async bundleArgs => {
+            if (
+                pulumi.runtime.isDryRun() &&
+                !pulumi.runtime.isTestModeEnabled()
+            ) {
+                return bundleAndZip(bundleArgs.buildDir, bundleArgs.entryFile)
+            }
+
+            return false
+        })
+
+        this.bundleResult = bundleResult
+        this.done = bundleResult.apply(() => true)
+
+        this.registerOutputs({
+            bundleResult: this.bundleResult,
+            done: this.done,
+        })
+    }
 }

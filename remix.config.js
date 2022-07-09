@@ -5,4 +5,6 @@ module.exports = {
     assetsBuildDirectory: "public/static",
     publicPath: "/static/",
     serverBuildDirectory: "server/build",
+    // This seems to fix a gotchya with ESM modules
+    serverDependenciesToBundle: ["nanoid"]
 }

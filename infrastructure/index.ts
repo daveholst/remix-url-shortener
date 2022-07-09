@@ -83,27 +83,26 @@ const selectedZone = pulumi.output(
 const linksTable = new aws.dynamodb.Table(dbName, {
     attributes: [
         {
+            name: 'pk',
+            type: 'S',
+        },
+        {
             name: 'urlHash',
             type: 'S',
         },
         {
-            name: 'longUrl',
-            type: 'S',
-        },
-        {
-            name: 'createdAt',
+            name: 'createdAtEpoch',
             type: 'N',
         },
     ],
-    hashKey: 'urlHash',
-    rangeKey: 'longUrl',
+    hashKey: 'pk',
+    rangeKey: 'urlHash',
     globalSecondaryIndexes: [
         {
-            hashKey: 'createdAt',
+            hashKey: 'pk',
             name: 'createdAtIndex',
-            nonKeyAttributes: ['urlHash', 'longUrl'],
-            projectionType: 'INCLUDE',
-            rangeKey: 'urlHash',
+            projectionType: 'ALL',
+            rangeKey: 'createdAtEpoch',
             readCapacity: 10,
             writeCapacity: 10,
         },
@@ -175,7 +174,7 @@ const lambda = new aws.lambda.Function(
         memorySize: 2048,
         environment: {
             variables: {
-                DYNAMODB_ARN: linksTable.arn,
+                DYNAMODB_NAME: linksTable.name,
             },
         },
     },
@@ -406,3 +405,4 @@ const apiDnsRecord = new aws.route53.Record(
 // }
 
 exports.dbArn = linksTable.arn
+exports.dbName = linksTable.name

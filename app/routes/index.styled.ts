@@ -1,9 +1,17 @@
+import { Form } from '@remix-run/react'
 import { styled } from '~/styles/stitches.config'
 
-export const StyledLinkForm = styled('form', {
+export const StyledLinkForm = styled(Form, {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+
+    '& fieldset': {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        border: 0,
+    },
 
     '& input': {
         width: '90vw',

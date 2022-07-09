@@ -1,9 +1,15 @@
-import { ActionFunction, json } from '@remix-run/node'
+import { ActionFunction, json, LoaderFunction } from '@remix-run/node'
 import { Banner } from '~/components/Banner'
-// import { LinkForm } from '~/components/LinkForm'
-import { GeneratedLink, StyledLinkForm } from './index.styled'
-import { Form, useActionData, useCatch, useTransition } from '@remix-run/react'
-import { createLink } from '~/utils/createLink'
+import { GeneratedLink, StyledLinkForm, StyledSubTitle } from './index.styled'
+import {
+    useActionData,
+    useCatch,
+    useLoaderData,
+    useTransition,
+} from '@remix-run/react'
+import { createLink, ShortUrlItem } from '~/db/createLink'
+import { getRecentLinks } from '~/db/getRecentLinks'
+import { ListedLink } from '~/components/ListedLink'
 
 /* Serverside Form handler -- I imagine this would work better hitting a microservice */
 export const action: ActionFunction = async ({
@@ -25,6 +31,11 @@ export const action: ActionFunction = async ({
     // return formData
 }
 
+export const loader: LoaderFunction = async () => {
+    const result = await getRecentLinks()
+    return result || null
+}
+
 // TODO better typing and error handling here
 interface ActionData {
     createdAt: string
@@ -35,9 +46,16 @@ interface ActionData {
 }
 
 export default function Index() {
+    const recentLinks = useLoaderData() as ShortUrlItem[]
     const actionData = useActionData<ActionData | undefined>()
-
+    console.log(recentLinks)
     const transition = useTransition()
+    if (actionData?.urlHash && navigator.clipboard) {
+        console.log('Clipboard API available')
+        navigator.clipboard.writeText(
+            `https://link.dh.wtf/${actionData.urlHash}`
+        )
+    }
     return (
         <>
             <Banner />
@@ -59,21 +77,24 @@ export default function Index() {
                             : 'Bill Shorten'}
                     </button>
                 </fieldset>
-                {/* TODO just a placeholder for now */}
                 {actionData && (
                     // TODO is there a better Link style component for this?
                     <GeneratedLink href={actionData.urlHash}>
                         {`https://link.dh.wtf/${actionData.urlHash}`}
                     </GeneratedLink>
                 )}
-
-                {/* TODO style this error box out? */}
+                {/* TODO style this error box out? lol, maybe handle errors, idfk */}
                 {/* {actionData && actionData.errors.rawurl ? (
                     <p style={{ color: 'red' }}>
                         {actionData.errors.description}
                     </p>
                 ) : null} */}
             </StyledLinkForm>
+            <StyledSubTitle>Here are some I prepared earlier...</StyledSubTitle>
+            {recentLinks &&
+                recentLinks.map(link => (
+                    <ListedLink short={link.urlHash} long={link.longUrl} />
+                ))}
         </>
     )
 }

@@ -26,7 +26,7 @@ export const StyledLinkForm = styled(Form, {
     },
 
     '& button': {
-        margin: '$md',
+        margin: '$lg',
         width: 300,
         height: '40px',
         fontFamily: '$mono',
@@ -40,5 +40,13 @@ export const StyledLinkForm = styled(Form, {
 
 export const GeneratedLink = styled('a', {
     fontFamily: '$sans',
+    fontSize: '1.4rem',
     color: '$hookers-green',
+})
+
+export const StyledSubTitle = styled('h2', {
+    fontFamily: '$mono',
+    display: 'flex',
+    justifyContent: 'center',
+    margin: '$md',
 })

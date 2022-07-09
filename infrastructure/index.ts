@@ -323,9 +323,10 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
         forwardedValues: {
             cookies: { forward: 'all' },
             queryString: true,
+            headers: ['Origin'],
         },
 
-        minTtl: 0,
+        minTtl: 5,
         // defaultTtl: tenMinutes,
         defaultTtl: 15,
         // maxTtl: tenMinutes,

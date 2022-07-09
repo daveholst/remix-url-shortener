@@ -12,17 +12,12 @@ export async function getLink(hash: string) {
           })
         : new DynamoDB.DocumentClient({})
 
+    // TODO errors on types, needs to be redone, byt works now so mehhh
     const getItemInput = {
         TableName: dbTableName,
         Key: {
             pk: 'shortUrl',
             urlHash: hash,
-            // pk: {
-            //     S: 'shortUrl',
-            // },
-            // urlHash: {
-            //     S: hash,
-            // },
         },
     }
 

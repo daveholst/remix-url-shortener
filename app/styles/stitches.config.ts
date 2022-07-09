@@ -22,6 +22,8 @@ export const {
             xs: '0.25rem',
             sm: '0.5rem',
             md: '1rem',
+            lg: '2rem',
+            xl: '3rem',
         },
         fonts: {
             sans: 'Rockwell, apple-system, sans-serif',

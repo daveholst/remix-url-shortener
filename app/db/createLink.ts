@@ -55,7 +55,7 @@ export async function createLink(longUrl: string) {
             TableName: dbTableName,
             GlobalSecondaryIndexes: [
                 {
-                    IndexName: 'createAtIndex' /* required */,
+                    IndexName: 'createdAtIndex' /* required */,
                     KeySchema: [
                         /* required */
                         {
@@ -111,26 +111,22 @@ export async function createLink(longUrl: string) {
     if (!dbTableName)
         throw new Error('DB table name - environment variable not found')
     try {
-        const dbData = await db
-            .put({
-                TableName: dbTableName,
-                Item: {
-                    pk: 'shortUrl',
-                    urlHash,
-                    longUrl,
-                    createdAt: date.toISOString(),
-                    createdAtEpoch: date.getTime(),
-                },
-                ConditionExpression: 'attribute_not_exists(urlHash)',
-            })
-            .promise()
-        return {
+        const item: ShortUrlItem = {
             pk: 'shortUrl',
             urlHash,
-            longUrl,
+            longUrl: longUrl || 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
             createdAt: date.toISOString(),
             createdAtEpoch: date.getTime(),
         }
+
+        await db
+            .put({
+                TableName: dbTableName,
+                Item: item,
+                ConditionExpression: 'attribute_not_exists(urlHash)',
+            })
+            .promise()
+        return item
     } catch (e) {
         console.error(e)
         return e as AWSError

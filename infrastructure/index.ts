@@ -308,13 +308,21 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     ],
     defaultCacheBehavior: {
         targetOriginId: 'ssr-lambda',
-        viewerProtocolPolicy: 'redirect-to-https',
-        allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+        viewerProtocolPolicy: 'https-only',
+        allowedMethods: [
+            'GET',
+            'HEAD',
+            'OPTIONS',
+            'PUT',
+            'PATCH',
+            'POST',
+            'DELETE',
+        ],
         cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
 
         forwardedValues: {
-            cookies: { forward: 'none' },
-            queryString: false,
+            cookies: { forward: 'all' },
+            queryString: true,
         },
 
         minTtl: 0,
@@ -330,10 +338,10 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
             cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
             targetOriginId: 'static-bucket',
             forwardedValues: {
-                queryString: false,
+                queryString: true,
                 headers: ['Origin'],
                 cookies: {
-                    forward: 'none',
+                    forward: 'all',
                 },
             },
             minTtl: 0,

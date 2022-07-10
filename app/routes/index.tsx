@@ -11,7 +11,7 @@ import { createLink, ShortUrlItem } from '~/db/createLink'
 import { getRecentLinks } from '~/db/getRecentLinks'
 import { ListedLink } from '~/components/ListedLink'
 
-/* Serverside Form handler -- I imagine this would work better hitting a microservice */
+/* Serverside Form handler */
 export const action: ActionFunction = async ({
     request,
 }): Promise<Response | ActionData> => {
@@ -27,10 +27,8 @@ export const action: ActionFunction = async ({
     } catch (error) {
         return json(error, { status: 500 })
     }
-
-    // return formData
 }
-
+/* Recent links dataloader */
 export const loader: LoaderFunction = async () => {
     const result = await getRecentLinks()
     return result || null
@@ -46,10 +44,14 @@ interface ActionData {
 }
 
 export default function Index() {
+    // Data Loader
     const recentLinks = useLoaderData() as ShortUrlItem[]
+    // Form Mutation Handler
     const actionData = useActionData<ActionData | undefined>()
-    console.log(recentLinks)
+    // Form Submission Status Hook
     const transition = useTransition()
+
+    // copy gnerated hash url to clipboard on form success
     if (actionData?.urlHash && navigator.clipboard) {
         console.log('Clipboard API available')
         navigator.clipboard.writeText(
@@ -65,12 +67,9 @@ export default function Index() {
                         <input
                             type="text"
                             name="rawurl"
-                            // defaultValue={actionData?.fields?.rawurl}
-                            // value={linkInput}
                             placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
                         />
                     </label>
-                    {/* TODO does an api exist that listens to the paste event??? */}
                     <button type="submit">
                         {transition.state === 'submitting'
                             ? 'Creating...'
@@ -101,7 +100,7 @@ export default function Index() {
 
 export function CatchBoundary() {
     const caught = useCatch()
-
+    //TODO write a proper error boundary following pattern below
     // if (caught.status === 401) {
     //   return (
     //     <div className="error-container">

@@ -1,4 +1,5 @@
 import { AWSError, DynamoDB } from 'aws-sdk'
+import { GetItemInput } from 'aws-sdk/clients/dynamodb'
 import { ShortUrlItem } from './createLink'
 
 export async function getLink(hash: string) {
@@ -12,7 +13,7 @@ export async function getLink(hash: string) {
           })
         : new DynamoDB.DocumentClient({})
 
-    // TODO errors on types, needs to be redone, byt works now so mehhh
+    // TODO errors on types if I use GetItemInput - needs to be redone without using deprecated Key Prop, byt works now so mehhh
     const getItemInput = {
         TableName: dbTableName,
         Key: {
@@ -23,7 +24,7 @@ export async function getLink(hash: string) {
 
     try {
         const getItemOutput = await db.get(getItemInput).promise()
-        // TODO ooooof need to srot this
+        // TODO ooooof prob need to sort this
         return getItemOutput.Item as ShortUrlItem
     } catch (error) {
         console.error(error)

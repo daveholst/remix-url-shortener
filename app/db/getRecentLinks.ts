@@ -5,8 +5,8 @@ import { ShortUrlItem } from './createLink'
 export async function getRecentLinks() {
     const dbTableName = process.env.DYNAMODB_NAME || 'brokenass-local-table'
 
+    // TODO could porbably getting some better config handling for this
     const isLocal = process.env.NODE_ENV !== 'production'
-
     const db = isLocal
         ? new DynamoDB({
               endpoint: 'http://localhost:4567',
@@ -25,7 +25,6 @@ export async function getRecentLinks() {
             },
             ':3fee1': {
                 N: new Date().getTime().toString(),
-                // N: '1657343896443',
             },
         },
         ExpressionAttributeNames: {
@@ -39,6 +38,7 @@ export async function getRecentLinks() {
         // sanitze the data
         const cleanItems: ShortUrlItem[] | undefined = getItemOutput.Items?.map(
             item => ({
+                // TODO this empty string typing isn't ideal
                 createdAt: item.createdAt.S || '',
                 createdAtEpoch: parseInt(item.createdAt.N || ''),
                 longUrl: item.longUrl.S || '',
@@ -46,8 +46,6 @@ export async function getRecentLinks() {
                 urlHash: item.urlHash.S || '',
             })
         )
-
-        // TODO ooooof need to srot this
         return cleanItems
     } catch (error) {
         console.error(error)

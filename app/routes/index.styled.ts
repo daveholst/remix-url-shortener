@@ -1,5 +1,22 @@
 import { Form } from '@remix-run/react'
+import { keyframes } from '@stitches/react'
 import { styled } from '~/styles/stitches.config'
+
+const shake = keyframes({
+    '10%, 90%': {
+        transform: 'translate3d(-1px, 1px, 0)',
+    },
+
+    '20%, 80%': {
+        transform: 'translate3d(2px, -2px, 0)',
+    },
+    '30%, 50%, 70%': {
+        transform: 'translate3d(-5px, 5px, 0',
+    },
+    '40%, 60%': {
+        transform: 'translate3d(4px, -4px, 0)',
+    },
+})
 
 export const StyledLinkForm = styled(Form, {
     display: 'flex',
@@ -26,7 +43,8 @@ export const StyledLinkForm = styled(Form, {
     },
 
     '& button': {
-        margin: '$lg',
+        cursor: 'pointer',
+        margin: '$lg auto',
         width: 300,
         height: '40px',
         fontFamily: '$mono',
@@ -35,6 +53,13 @@ export const StyledLinkForm = styled(Form, {
         border: 'solid 2px $charcoal',
         borderRadius: '4px',
         backgroundColor: '$ash-gray',
+
+        '&:hover': {
+            backgroundColor: '$dark-sea-green',
+            animation: `${shake} 0.08s cubic-bezier(.36, .07, .19, .97) infinite`,
+            transform: 'translate3d(0, 0, 0)',
+            perspective: '1000px',
+        },
     },
 })
 

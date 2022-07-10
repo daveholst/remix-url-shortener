@@ -9,10 +9,6 @@ export default function handleRequest(
     responseHeaders: Headers,
     remixContext: EntryContext
 ) {
-    // let markup = renderToString(
-    //     <RemixServer context={remixContext} url={request.url} />
-    // )
-
     /* Getting stitches working in remix as per https://rossmoody.com/writing/remix-stitches */
     const markup = ReactDOMServer.renderToString(
         <RemixServer context={remixContext} url={request.url} />

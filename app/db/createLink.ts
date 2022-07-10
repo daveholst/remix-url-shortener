@@ -19,6 +19,8 @@ export async function createLink(longUrl: string) {
 
     const isLocal = process.env.NODE_ENV !== 'production'
     let db
+
+    // if running Remix in local dev, write a table to dynalite if required
     if (isLocal) {
         const dbClient = new DynamoDB({
             endpoint: 'http://localhost:4567',
@@ -55,34 +57,25 @@ export async function createLink(longUrl: string) {
             TableName: dbTableName,
             GlobalSecondaryIndexes: [
                 {
-                    IndexName: 'createdAtIndex' /* required */,
+                    IndexName: 'createdAtIndex',
                     KeySchema: [
-                        /* required */
                         {
-                            AttributeName: 'pk' /* required */,
-                            KeyType: 'HASH' /* required */,
+                            AttributeName: 'pk',
+                            KeyType: 'HASH',
                         },
                         {
-                            AttributeName: 'createdAtEpoch' /* required */,
-                            KeyType: 'RANGE' /* required */,
+                            AttributeName: 'createdAtEpoch',
+                            KeyType: 'RANGE',
                         },
-
-                        /* more items */
                     ],
                     Projection: {
-                        /* required */
-                        // NonKeyAttributes: [
-                        //   'STRING_VALUE',
-                        //   /* more items */
-                        // ],
                         ProjectionType: 'ALL',
                     },
                     ProvisionedThroughput: {
-                        ReadCapacityUnits: 5 /* required */,
-                        WriteCapacityUnits: 5 /* required */,
+                        ReadCapacityUnits: 5,
+                        WriteCapacityUnits: 5,
                     },
                 },
-                /* more items */
             ],
         }
         // check if tables exists
@@ -106,7 +99,7 @@ export async function createLink(longUrl: string) {
     }
 
     console.log('urlhash', urlHash)
-    // TODO check that the hash is unique
+    // TODO add some checks that the hash is unique
     // add the key pair to the db
     if (!dbTableName)
         throw new Error('DB table name - environment variable not found')

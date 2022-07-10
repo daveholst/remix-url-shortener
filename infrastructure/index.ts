@@ -12,9 +12,10 @@ import * as mime from 'mime'
 const projectRoot = './'
 const staticFiles = '../public'
 
-// const stackName = pulumi.getStack()
+const stackName = pulumi.getStack()
+const isLocal = stackName === 'localstack'
 const name = 'link-shortener'
-const domain = 'link.dh.wtf'
+const domain = isLocal ? 'locallink.dh.wtf' : 'link.dh.wtf'
 const dbName = 'link-shortener-table'
 const domainParts = getDomainAndSubdomain(domain)
 const tenMinutes = 60 * 10
@@ -27,53 +28,60 @@ const existingCertArn =
  * Domain & Certs
  */
 
-// create the zone if running on local stack
-// const selectedZone = new aws.route53.Zone(domainParts.parentDomain, {})
+let selectedZone
+if (isLocal) {
+    // create the zone if running on local stack
+    selectedZone = new aws.route53.Zone(domainParts.parentDomain, {})
+} else {
+    // Get the hosted zone by domain name
+    selectedZone = pulumi.output(
+        aws.route53.getZone({ name: domainParts.parentDomain }, { async: true })
+    )
+}
 
-// Get the hosted zone by domain name
-const selectedZone = pulumi.output(
-    aws.route53.getZone({ name: domainParts.parentDomain }, { async: true })
-)
+// If we are running on localStack we need to generate the certificates - TODO still a WIP
 
-// TODO keeping these incase they have to be mocked in localstack env
+if (isLocal) {
+    // Per AWS, ACM certificate must be in the us-east-1 region.
+    // const eastRegion = new aws.Provider(`${name}-east-1-provider`, {
+    //     profile: 'pulumi-admin',
+    //     region: 'us-east-1',
+    // })
 
-// Per AWS, ACM certificate must be in the us-east-1 region.
-// const eastRegion = new aws.Provider(`${name}-east-1-provider`, {
-//     profile: 'pulumi-admin',
-//     region: 'us-east-1',
-// })
+    //  Create the SSL Certificate
+    const certificate = new aws.acm.Certificate(
+        `${name}-certificate`,
+        {
+            domainName: domain,
+            validationMethod: 'DNS',
+        }
+        // { provider: eastRegion }
+    )
 
-//  Create the SSL Certificate
-// const certificate = new aws.acm.Certificate(
-//     `${name}-certificate`,
-//     {
-//         domainName: domain,
-//         validationMethod: 'DNS',
-//     },
-//     { provider: eastRegion }
-// )
+    // Create the Certificate Validation Records in the DNS
+    const certificateValidationDomain = new aws.route53.Record(
+        `${name}-validation`,
+        {
+            name: certificate.domainValidationOptions[0].resourceRecordName,
+            zoneId: selectedZone.zoneId,
+            type: certificate.domainValidationOptions[0].resourceRecordType,
+            records: [
+                certificate.domainValidationOptions[0].resourceRecordValue,
+            ],
+            ttl: tenMinutes,
+        }
+        // { provider: eastRegion }
+    )
 
-// Create the Certificate Validation Records in the DNS
-// const certificateValidationDomain = new aws.route53.Record(
-//     `${name}-validation`,
-//     {
-//         name: certificate.domainValidationOptions[0].resourceRecordName,
-//         zoneId: selectedZone.zoneId,
-//         type: certificate.domainValidationOptions[0].resourceRecordType,
-//         records: [certificate.domainValidationOptions[0].resourceRecordValue],
-//         ttl: tenMinutes,
-//     },
-//     { provider: eastRegion }
-// )
-
-// Wait for Certificate to be validated
-// const certificateValidation = new aws.acm.CertificateValidation(
-//     `${name}-certificate-validation`,
-//     {
-//         certificateArn: certificate.arn,
-//         validationRecordFqdns: [certificateValidationDomain.fqdn],
-//     }
-// )
+    // Wait for Certificate to be validated
+    const certificateValidation = new aws.acm.CertificateValidation(
+        `${name}-certificate-validation`,
+        {
+            certificateArn: certificate.arn,
+            validationRecordFqdns: [certificateValidationDomain.fqdn],
+        }
+    )
+}
 
 /**
  * Database
@@ -159,7 +167,7 @@ const policy = new aws.iam.RolePolicy(`${name}-lambda-policy`, {
     ),
 })
 
-// attach lambda role and policy - not sure if required
+// attach lambda role and policy
 
 // lambda
 const lambda = new aws.lambda.Function(
@@ -271,11 +279,11 @@ crawlDirectory(webContentsRootPath, (filePath: string) => {
  * CDN
  */
 
-// Cloudfront Distribution config
-
 // distributionArgs configures the CloudFront distribution. Relevant documentation:
 // https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/distribution-web-values-specify.html
 // https://www.terraform.io/docs/providers/aws/r/cloudfront_distribution.html
+
+// Cloudfront Distribution config
 const distributionArgs: aws.cloudfront.DistributionArgs = {
     enabled: true,
     aliases: [domain],
@@ -394,7 +402,6 @@ const cdn = new aws.cloudfront.Distribution(`${name}-cdn`, distributionArgs)
  */
 
 //  Create DNS record for apiGateway
-
 const apiDnsRecord = new aws.route53.Record(
     `${name}-dns-record`,
     {
@@ -409,9 +416,9 @@ const apiDnsRecord = new aws.route53.Record(
             },
         ],
     },
-    { dependsOn: [apiGateway] }
+    { dependsOn: [apiGateway, cdn] }
 )
-// }
 
 exports.dbArn = linksTable.arn
 exports.dbName = linksTable.name
+exports.cdnLink = cdn.domainName

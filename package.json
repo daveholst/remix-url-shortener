@@ -5,9 +5,10 @@
     "sideEffects": false,
     "scripts": {
         "build": "remix build",
-        "dev": "remix dev",
+        "dev": "concurrently \"dynalite\" \"remix dev\"",
         "start": "remix-serve build",
         "deploy:prod": "pnpm run build && pulumi up --cwd ./infrastructure --stack prod",
+        "deploy:local": "pnpm run build && pulumi up --cwd ./infrastructure --stack localstack",
         "lambda-dev": "concurrently -p \"[{name}]\" -n \"TSC,NODEMON\" -c \"bgBlue.bold,bgMagenta.bold\" \"npx tsc ./lambda/app.ts --esModuleInterop --watch --pretty\" \"nodemon -q dist/index.js\""
     },
     "keywords": [],

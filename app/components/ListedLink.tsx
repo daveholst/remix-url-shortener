@@ -1,3 +1,4 @@
+import { getShortName } from './helpers/getShortName'
 import {
     StyledListedLinkWrapper,
     StyledLongLink,
@@ -10,11 +11,6 @@ export interface ListedLinkProps {
 }
 
 export function ListedLink({ short, long }: ListedLinkProps) {
-    function shortenLongUrl(url: string) {
-        url.split('.')
-        return
-    }
-
     return (
         <StyledListedLinkWrapper>
             <StyledShortLink
@@ -22,7 +18,7 @@ export function ListedLink({ short, long }: ListedLinkProps) {
             >{`https://link.dh.wtf/${short}`}</StyledShortLink>
             <span>{' == '}</span>
             <StyledLongLink href={long}>
-                {long.split('.')[1] || '???'}
+                {getShortName(long) || '???'}
             </StyledLongLink>
         </StyledListedLinkWrapper>
     )

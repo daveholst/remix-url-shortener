@@ -5,7 +5,8 @@ export function getShortName(url: string) {
         // short url ie. https://github.com/localstack/localstack
         const splitDomain = url.split('//')[1]
         if (url.includes('.')) {
-            return splitDomain.split('.')[0]
+            return splitDomain?.split('.')[0]
         }
+        return '???'
     }
 }

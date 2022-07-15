@@ -17,9 +17,7 @@ export function ListedLink({ short, long }: ListedLinkProps) {
                 to={short}
             >{`https://link.dh.wtf/${short}`}</StyledShortLink>
             <span>{' == '}</span>
-            <StyledLongLink href={long}>
-                {getShortName(long) || '???'}
-            </StyledLongLink>
+            <StyledLongLink href={long}>{getShortName(long)}</StyledLongLink>
         </StyledListedLinkWrapper>
     )
 }

@@ -73,7 +73,7 @@ export default function Index() {
                     <button type="submit">
                         {transition.state === 'submitting'
                             ? 'Creating...'
-                            : 'Bill Shorten'}
+                            : 'El Shorten'}
                     </button>
                 </fieldset>
                 {actionData && (
@@ -82,7 +82,7 @@ export default function Index() {
                         {`https://link.dh.wtf/${actionData.urlHash}`}
                     </GeneratedLink>
                 )}
-                {/* TODO style this error box out? lol, maybe handle errors, idfk */}
+                {/* TODO style this error box out? lol, maybe handle errors, idk */}
                 {/* {actionData && actionData.errors.rawurl ? (
                     <p style={{ color: 'red' }}>
                         {actionData.errors.description}
@@ -91,8 +91,12 @@ export default function Index() {
             </StyledLinkForm>
             <StyledSubTitle>Here are some I prepared earlier...</StyledSubTitle>
             {recentLinks &&
-                recentLinks.map(link => (
-                    <ListedLink short={link.urlHash} long={link.longUrl} />
+                recentLinks.map((link, i) => (
+                    <ListedLink
+                        key={`prev-link-${i}`}
+                        short={link.urlHash}
+                        long={link.longUrl}
+                    />
                 ))}
         </>
     )

@@ -316,7 +316,7 @@ const distributionArgs: aws.cloudfront.DistributionArgs = {
     ],
     defaultCacheBehavior: {
         targetOriginId: 'ssr-lambda',
-        viewerProtocolPolicy: 'https-only',
+        viewerProtocolPolicy: 'redirect-to-https',
         allowedMethods: [
             'GET',
             'HEAD',

@@ -13,6 +13,10 @@ const cases = [
         input: 'http://www.google.com/search?q=Test&sxsrf=ALiCzsZJ7XDjmGTp9BLaIRsCKpwlaQAdfA%3A1657787556137&source=hp&ei=pNTPYpvxBaTR2roPiMuWsAU&iflsig=AJiK0e8AAAAAYs_itMIMVR9SiyodzrFHOONnqst7weID&ved=0ahUKEwib05Pz-_f4AhWkqFYBHYilBVYQ4dUDCAk&uact=5&oq=Test&gs_lcp=Cgdnd3Mtd2l6EAMyBAgjECcyBAgjECcyEQguEIAEELEDEIMBEMcBENEDMgsIABCABBCxAxCDATILCAAQgAQQsQMQgwEyDgguEIAEELEDEMcBENEDMhEILhCABBCxAxCDARDHARDRAzIICAAQgAQQsQMyEQguEIAEELEDEMcBENEDENQCMgsIABCABBCxAxCDAToLCC4QgAQQsQMQgwE6FAguEIAEELEDEIMBEMcBENEDENQCUABYrgRg4wVoAHAAeACAAY0CiAHYA5IBAzItMpgBAKABAQ&sclient=gws-wiz',
         expected: 'google',
     },
+    {
+        input: 'asdjhfdsjlhfldsahgf',
+        expected: '???',
+    },
 ]
 
 cases.map(testCase => {

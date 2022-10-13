@@ -115,9 +115,7 @@ const linksTable = new aws.dynamodb.Table(dbName, {
             writeCapacity: 10,
         },
     ],
-    billingMode: 'PROVISIONED',
-    readCapacity: 10,
-    writeCapacity: 10,
+    billingMode: 'PAY_PER_REQUEST',
 })
 
 /**
